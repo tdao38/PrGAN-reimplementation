@@ -1,4 +1,3 @@
-import torch.nn.functional as F
 import torch
 import numpy as np
 
@@ -64,6 +63,10 @@ class ShapeDiscriminator3D(torch.nn.Module):
         return input.mean(dim=2) , input.std(dim=2)
 
 
+def l2(a, b):
+    return (torch.pow(a - b, 2)).mean()
+
+
 
 
 ###############################  test script begin
@@ -75,6 +78,12 @@ loss = model.loss(h4, p)
 mean, std = model.stat(h0)
 
 
+G_loss = l2(dr_mean, dl_mean)
+G_loss += l2(dr_var, dl_var)
+D_loss = D_loss_real + D_loss_fake
+
+
+
 ###############################  test script end
 # calculate the loss
 # write a scirpt that call both function
@@ -82,23 +91,23 @@ mean, std = model.stat(h0)
 # render the image
 # 
 
-self.G_loss = ops.l2(dr_mean, dl_mean)
-
-self.D_optim = tf.train.AdamOptimizer(1e-4, beta1=0.5).minimize(self.D_loss, var_list=self.D_vars)
-self.G_optim = tf.train.AdamOptimizer(0.0025, beta1=0.5).minimize(self.G_loss, var_list=self.G_vars)
-self.G_optim_classic = tf.train.AdamOptimizer(0.0025, beta1=0.5).minimize(self.G_loss_classic, var_list=self.G_vars)
-
-
-
-p_tensor=  tf.convert_to_tensor(torch.empty(sigmoid.shape))
-logits_logit= tf.convert_to_tensor(torch.empty(logits .shape))
-
-logits_tensor = tf.convert_to_tensor(logits)
-
-p = p_tensor
-logit = logits_logit
-
-loss = p*-torch.log(torch.sigmoid(logits)) + (1-p)*-torch.log(1-torch.sigmoid(logits))
+# self.G_loss = ops.l2(dr_mean, dl_mean)
+#
+# self.D_optim = tf.train.AdamOptimizer(1e-4, beta1=0.5).minimize(self.D_loss, var_list=self.D_vars)
+# self.G_optim = tf.train.AdamOptimizer(0.0025, beta1=0.5).minimize(self.G_loss, var_list=self.G_vars)
+# self.G_optim_classic = tf.train.AdamOptimizer(0.0025, beta1=0.5).minimize(self.G_loss_classic, var_list=self.G_vars)
+#
+#
+#
+# p_tensor=  tf.convert_to_tensor(torch.empty(sigmoid.shape))
+# logits_logit= tf.convert_to_tensor(torch.empty(logits .shape))
+#
+# logits_tensor = tf.convert_to_tensor(logits)
+#
+# p = p_tensor
+# logit = logits_logit
+#
+# loss = p*-torch.log(torch.sigmoid(logits)) + (1-p)*-torch.log(1-torch.sigmoid(logits))
 
 
 
@@ -238,8 +247,8 @@ loss = p*-torch.log(torch.sigmoid(logits)) + (1-p)*-torch.log(1-torch.sigmoid(lo
 #     tensor.data.mul_(std).add_(mean)
 
 
-image = np.random.uniform(-1, 1, [64, 32,32])
-a = torch.FloatTensor(image)
-
-input = torch.randn(64, 32, 32, 1)
-tf.reshape(image, [64, 32, 32, 1])
+# image = np.random.uniform(-1, 1, [64, 32,32])
+# a = torch.FloatTensor(image)
+#
+# input = torch.randn(64, 32, 32, 1)
+# tf.reshape(image, [64, 32, 32, 1])
