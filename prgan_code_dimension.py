@@ -166,19 +166,27 @@ d = 64
 s = v
 i = (s+1)*4.5
 i = i.int()
-vp = torch.Tensor([0, np.pi / 4.0, np.pi / 2.0, 3 * np.pi / 4.0, np.pi, 5 * np.pi / 4.0, 3 * np.pi / 2.0, 7 * np.pi / 4.0, np.pi / 2.0])
-hp = torch.Tensor([0, 0, 0, 0, 0, 0, 0, 0, np.pi / 2.0])
+# not using torch tensor
+vp = [0, np.pi / 4.0, np.pi / 2.0, 3 * np.pi / 4.0, np.pi, 5 * np.pi / 4.0, 3 * np.pi / 2.0, 7 * np.pi / 4.0, np.pi / 2.0]
+hp = [0, 0, 0, 0, 0, 0, 0, 0, np.pi / 2.0]
+import math
+
 
 theta = vp[i]
 phi = hp[i]
 
-sin_theta = torch.sin(theta)
-cos_theta = torch.cos(theta)
-sin_phi = torch.sin(phi)
-cos_phi = torch.cos(phi)
+sin_theta = math.sin(theta)
+cos_theta = math.cos(theta)
+sin_phi = math.sin(phi)
+cos_phi = math.cos(phi)
 
 ry = [[cos_theta, 0, sin_theta], [0, 1, 0], [-sin_theta, 0, cos_theta]]
 rx = [[1, 0, 0], [0, cos_phi, -sin_phi], [0, sin_phi, cos_phi]]
+# return
+torch.Tensor(np.matmul(rx, ry))
+# 3x3
+# convert that to tensor
+
 
 ## grid_cord:
 xl = np.linspace(-1.0, 1.0, w)
@@ -209,10 +217,14 @@ zs_t = (idxs_f[:, 2] + 1.0) * float(d) / 2.0
 
 
 ## RESAMPLE VOXELS:
-v = v
+v = voxels[0]
 xs = torch.from_numpy(xs_t)
 ys = torch.from_numpy(ys_t)
 zs = torch.from_numpy(ys_t)
+xs = xs_t
+ys = ys_t
+zs = ys_t
+
 
 floor_xs = torch.floor(torch.clamp(xs, 0, 64))
 floor_ys = torch.floor(torch.clamp(ys, 0, 64))
@@ -223,7 +235,33 @@ ceil_ys = torch.ceil(torch.clamp(ys, 0, 64))
 ceil_zs = torch.ceil(torch.clamp(zs, 0, 64))
 
 # GET VOXEL VALUE
-idxs = torch.stack([xs, ys, zs], axis=1)
-idxs = torch.clamp(idxs, 0, v.shape[0])
-# idxs = tf.expand_dims(idxs, 0)
+# convert them to integer bc they are indexs
+idxs =  torch.ceil((torch.stack([xs, ys, zs], axis=1)))
+idxs = torch.clamp(idxs, 0, v.shape[0]-1)
+# idxs_new = idxs.unsqueeze(0)
 
+# get_voxel_values
+temp = v[idxs[:,0].type(torch.LongTensor), idxs[:,1].type(torch.LongTensor), idxs[:,2].type(torch.LongTensor)]
+
+final = torch.abs((xs-floor_xs)*(ys-floor_ys)*(zs-floor_zs))*temp
+
+# transform volume
+transform = torch.reshape(final, v.shape)
+
+# project
+
+p = transform.sum(axis=2)
+tau=1
+p = torch.ones(p.shape) - torch.exp(-p*tau)
+
+##### return
+img = torch.flip(p.T, [0, 1])
+
+batch_size=2
+rendered_imgs = torch.zeros(batch_size, 64,64)
+rendered_imgs[0] = img
+rendered_imgs[1] = img
+
+# to match with the dim for real image
+# batch_size, 1, 64, 64
+rendered_imgs.unsqueeze(1).shape
