@@ -217,13 +217,13 @@ zs_t = (idxs_f[:, 2] + 1.0) * float(d) / 2.0
 
 
 ## RESAMPLE VOXELS:
-v = voxels[0]
+v = v
 xs = torch.from_numpy(xs_t)
 ys = torch.from_numpy(ys_t)
 zs = torch.from_numpy(ys_t)
-xs = xs_t
-ys = ys_t
-zs = ys_t
+# xs = xs_t
+# ys = ys_t
+# zs = ys_t
 
 
 floor_xs = torch.floor(torch.clamp(xs, 0, 64))
