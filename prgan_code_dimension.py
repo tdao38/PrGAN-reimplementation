@@ -184,6 +184,7 @@ ry = [[cos_theta, 0, sin_theta], [0, 1, 0], [-sin_theta, 0, cos_theta]]
 rx = [[1, 0, 0], [0, cos_phi, -sin_phi], [0, sin_phi, cos_phi]]
 # return
 torch.Tensor(np.matmul(rx, ry))
+# out put for rot_matrix
 # 3x3
 # convert that to tensor
 
@@ -221,9 +222,7 @@ v = v
 xs = torch.from_numpy(xs_t)
 ys = torch.from_numpy(ys_t)
 zs = torch.from_numpy(ys_t)
-# xs = xs_t
-# ys = ys_t
-# zs = ys_t
+
 
 
 floor_xs = torch.floor(torch.clamp(xs, 0, 64))
@@ -242,6 +241,7 @@ idxs = torch.clamp(idxs, 0, v.shape[0]-1)
 
 # get_voxel_values
 temp = v[idxs[:,0].type(torch.LongTensor), idxs[:,1].type(torch.LongTensor), idxs[:,2].type(torch.LongTensor)]
+# gather_nd function
 
 final = torch.abs((xs-floor_xs)*(ys-floor_ys)*(zs-floor_zs))*temp
 
@@ -264,4 +264,5 @@ rendered_imgs[1] = img
 
 # to match with the dim for real image
 # batch_size, 1, 64, 64
-rendered_imgs.unsqueeze(1).shape
+rendered_imgs.unsqueeze(1)
+# batch_size, 1, 64, 64
