@@ -78,6 +78,9 @@ def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Glo
             D_loss_fake = discriminator.loss(D_fake_logits, torch.zeros(D_fake.shape))
             G_loss_classic = discriminator.loss(D_fake_logits, torch.ones(D_fake.shape))
 
+            # discriminator optmier will stop oprtimizing after the dacc is greater than 0.8
+
+# save check point
             dr_mean, dr_var = discriminator.stat(D_stats_real)
             dl_mean, dl_var = discriminator.stat(D_stats_fake)
 
@@ -90,6 +93,13 @@ def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Glo
             optimizer_Dloss.step()
             optimizer_Gloss.step()
             optimizer_Gloss_classic.step()
+
+            # after 50 batch, we render/ save real image, fake image , and voxels
+            # ops.save_images
+            # ops.save_voxels
+
+
+
 
 
 # validation function
@@ -186,9 +196,8 @@ def main(args):
     # perform training!
     # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer_Dloss,optimizer_Gloss, optimizer_Gloss_classic, args.schedule, gamma=args.gamma)
 
-    for epoch in range(args.start_epoch, args.epochs):
-        dataset_name = "airplane64"
-        train(dataset_name , discrimnator, generator, optimizer_Dloss, optimizer_Gloss, optimizer_Gloss_classic , args)
+    dataset_name = "airplane64"
+    train(dataset_name , discrimnator, generator, optimizer_Dloss, optimizer_Gloss, optimizer_Gloss_classic , args)
         # val_loss = val(val_dataset, model, optimizer, args)
         # scheduler.step()
         # is_best = val_loss < best_loss
