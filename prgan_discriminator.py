@@ -26,7 +26,7 @@ class ShapeDiscriminator3D(torch.nn.Module):
         self.sigmoid = torch.nn.Sigmoid()
 
 
-    def forward(self, image, train_flag, reuse = False):
+    def forward(self, image):
         # input must be a torch.randn(64, 1, 32, 32)
 
         reshaped_img = torch.reshape(image, [self.batch_size, 1, self.image_size[0], self.image_size[1]])
@@ -70,17 +70,17 @@ def l2(a, b):
 
 
 ###############################  test script begin
-model = ShapeDiscriminator3D()
-input = torch.randn(64, 1, 32, 32)
-sigmoid, h4, h0 = model(input, False)
-p = torch.ones(sigmoid.shape)
-loss = model.loss(h4, p)
-mean, std = model.stat(h0)
-
-
-G_loss = l2(dr_mean, dl_mean)
-G_loss += l2(dr_var, dl_var)
-D_loss = D_loss_real + D_loss_fake
+# model = ShapeDiscriminator3D()
+# input = torch.randn(64, 1, 32, 32)
+# sigmoid, h4, h0 = model(input, False)
+# p = torch.ones(sigmoid.shape)
+# loss = model.loss(h4, p)
+# mean, std = model.stat(h0)
+#
+#
+# G_loss = l2(dr_mean, dl_mean)
+# G_loss += l2(dr_var, dl_var)
+# D_loss = D_loss_real + D_loss_fake
 
 
 

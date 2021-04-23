@@ -33,6 +33,7 @@ def transform_volume(v, t):
 
     return torch.reshape(resample_voxels(v, xs_t, ys_t, zs_t, method='trilinear'), v.shape)
 
+# identical to tensorflow
 def rot_matrix(s):
     i = (s + 1) * 4.5
     i = i.int()
@@ -136,7 +137,6 @@ class ShapeGenerator3D(torch.nn.Module):
         self.z_dim = 201
         self.vox_dim = 32
         self.batch_size = 64
-        self.z = self.get_z()
         self.tau = 0.5
 
         # Architecture
@@ -185,8 +185,9 @@ class ShapeGenerator3D(torch.nn.Module):
         return z
 
     def forward(self):
+        self.z = self.get_z()
         z_enc = self.z[:, :self.z_dim-1]
-        voxels = torch.zeros(64,64,64,64)
+        self.voxels = torch.zeros(64,64,64,64)
         for i in range(z_enc.shape[0]):
             z = z_enc[i]
             z_fc = self.fc(z)
@@ -206,15 +207,15 @@ class ShapeGenerator3D(torch.nn.Module):
                                         self.sigmoid)
             z_final = model(z_fc_reshape) * (1.0/self.tau)
             z_final_reshape = z_final.reshape(1, 64, 64, 64)
-            voxels[i] = z_final_reshape
+            self.voxels[i] = z_final_reshape
 
         # View
         v = self.z[:, self.z_dim-1]
 
         rendered_imgs = torch.zeros(64, 64, 64)
         for i in range(self.batch_size):
-            print("batch ", i+1)
-            img = project(transform_volume(voxels[i], rot_matrix(v[i])), self.tau)
+            #print("batch ", i+1)
+            img = project(transform_volume(self.voxels[i], rot_matrix(v[i])), self.tau)
             rendered_imgs[i] = img
 
         rendered_imgs_final = rendered_imgs.unsqueeze(1)
