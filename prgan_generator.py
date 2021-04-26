@@ -138,7 +138,7 @@ class ShapeGenerator3D(torch.nn.Module):
         self.vox_dim = 32
         self.batch_size = 64
         self.tau = 0.5
-
+        #self.z = self.get_z()
         # Architecture
         self.fc = torch.nn.Linear(in_features=200,  # self.z_dim-1,
                                   out_features=1 * 128 * 4 * 4 * 4)
@@ -187,28 +187,50 @@ class ShapeGenerator3D(torch.nn.Module):
     def forward(self):
         self.z = self.get_z()
         z_enc = self.z[:, :self.z_dim-1]
-        self.voxels = torch.zeros(64,64,64,64)
-        for i in range(z_enc.shape[0]):
-            z = z_enc[i]
-            z_fc = self.fc(z)
-            z_fc_reshape = z_fc.reshape(1,128,4,4,4)
-            model = torch.nn.Sequential(self.batch_norm_1,
-                                        self.relu,
-                                        self.conv3d_1,
-                                        self.batch_norm_2,
-                                        self.relu,
-                                        self.conv3d_2,
-                                        self.batch_norm_3,
-                                        self.relu,
-                                        self.conv3d_3,
-                                        self.batch_norm_4,
-                                        self.relu,
-                                        self.conv3d_4,
-                                        self.sigmoid)
-            z_final = model(z_fc_reshape) * (1.0/self.tau)
-            z_final_reshape = z_final.reshape(1, 64, 64, 64)
-            self.voxels[i] = z_final_reshape
+        z_fc = self.fc(z_enc)
+        z_fc_reshape = z_fc.reshape(64, 128, 4, 4, 4)
+        model = torch.nn.Sequential(self.batch_norm_1,
+                                    self.relu,
+                                    self.conv3d_1,
+                                    self.batch_norm_2,
+                                    self.relu,
+                                    self.conv3d_2,
+                                    self.batch_norm_3,
+                                    self.relu,
+                                    self.conv3d_3,
+                                    self.batch_norm_4,
+                                    self.relu,
+                                    self.conv3d_4,
+                                    self.sigmoid)
+        z_final = model(z_fc_reshape) * (1.0 / self.tau)
+        #z_final = model(z_fc_reshape) * (1.0 / 1)
+        z_final_reshape = z_final.reshape(64, 64, 64, 64)
+        self.voxels= z_final_reshape
 
+
+
+        #self.voxels = torch.zeros(64,64,64,64)
+
+        # for i in range(z_enc.shape[0]):
+        #     z = z_enc[i]
+        #     z_fc = self.fc(z)
+        #     z_fc_reshape = z_fc.reshape(1,128,4,4,4)
+        #     model = torch.nn.Sequential(self.batch_norm_1,
+        #                                 self.relu,
+        #                                 self.conv3d_1,
+        #                                 self.batch_norm_2,
+        #                                 self.relu,
+        #                                 self.conv3d_2,
+        #                                 self.batch_norm_3,
+        #                                 self.relu,
+        #                                 self.conv3d_3,
+        #                                 self.batch_norm_4,
+        #                                 self.relu,
+        #                                 self.conv3d_4,
+        #                                 self.sigmoid)
+        #     z_final = model(z_fc_reshape) * (1.0/self.tau)
+        #     z_final_reshape = z_final.reshape(1, 64, 64, 64)
+        #     self.voxels[i] = z_final_reshape
         # View
         v = self.z[:, self.z_dim-1]
 

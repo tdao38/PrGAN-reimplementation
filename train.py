@@ -1,9 +1,11 @@
-from  prgan_discriminator import ShapeDiscriminator3D, l2
+from  prgan_discriminator import ShapeDiscriminator3D, l2, loss, stat
 from prgan_generator import ShapeGenerator3D
 import matplotlib.image as mpimg
 from torchvision import transforms
 import glob
 from torchvision.utils import save_image
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 
 import os
@@ -27,7 +29,7 @@ def save_checkpoint(state, is_best, checkpoint_folder='checkpoints/', filename='
         shutil.copyfile(checkpoint_file, os.path.join(checkpoint_folder, 'model_best.pth.tar'))
 
 
-def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Gloss, optimizer_Gloss_classic):
+def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Gloss):
     discriminator.train()  # switch to train mode
     generator.train()
     #importing files
@@ -41,22 +43,23 @@ def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Glo
     sample_z = np.random.uniform(-1, 1, [batch_size , z_size])
     training_step = 0
 
-    n_iterations = 5
+    n_iterations = 200
     trans = transforms.Compose([transforms.Resize(32)])
     for epoch in range(n_iterations):
 
         # randomzied the file order
-        #rand_idxs = np.random.permutation(range(n_files))
-        rand_idxs = np.random.permutation(128)
+        rand_idxs = np.random.permutation(range(n_files))
+        #rand_idxs = np.random.permutation(128)
         # find the number of batches
-        #n_batches = n_files // batch_size
-        n_batches = 128 // batch_size
+        n_batches = n_files // batch_size
+        #n_batches = 128 // batch_size
         # batch size = 64
         for batch_i in range(n_batches):
             print(batch_i)
             # iterate through the files
-            idxs_i = rand_idxs[batch_i * batch_size: (batch_i + 1) * batch_size]
 
+            #idxs_i = rand_idxs[batch_i * batch_size: (batch_i + 1) * batch_size]
+            idxs_i = rand_idxs[batch_i * batch_size: (batch_i + 1) * batch_size]
             # load image batch
             imgs_batch = load_imgbatch(dataset_files[idxs_i], color=False)
             imgs_batch = torch.tensor(np.array(imgs_batch))
@@ -64,49 +67,109 @@ def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Glo
             tData = trans(imgs_batch)
 
             # fake data
-            fake_image = generator.forward()
+            fake_image = generator.forward().detach()
             fake_image = trans(fake_image)
 
-            optimizer_Dloss.zero_grad()
-            optimizer_Gloss.zero_grad()
-            optimizer_Gloss_classic.zero_grad()
+            d_error, d_pred_real, d_pred_fake = train_discriminator(optimizer_Dloss, tData, fake_image, discriminator)
+            # 2. Train Generator
+            # Generate fake data
+            fake_data = generator.forward()
+            fake_image = trans(fake_data)
 
-            D_real, D_real_logits, D_stats_real = discriminator(tData)
-            D_fake, D_fake_logits, D_stats_fake = discriminator(fake_image)
+            # Train G
+            g_error = train_generator(optimizer_Gloss, fake_image, discriminator)
+            print(g_error)
+            print(d_error)
 
-            D_loss_real = discriminator.loss(D_real_logits, torch.ones(D_real.shape))
-            D_loss_fake = discriminator.loss(D_fake_logits, torch.zeros(D_fake.shape))
-            G_loss_classic = discriminator.loss(D_fake_logits, torch.ones(D_fake.shape))
+            #
+            # optimizer_Dloss.zero_grad()
+            # optimizer_Gloss.zero_grad()
+            # optimizer_Gloss_classic.zero_grad()
+            #
+            # D_real, D_real_logits, D_stats_real = discriminator(tData)
+            # D_fake, D_fake_logits, D_stats_fake = discriminator(fake_image)
+            #
+            # D_loss_real = loss(D_real, torch.ones(D_real.shape))
+            # D_loss_fake = loss(D_fake, torch.zeros(D_fake.shape))
+            # G_loss_classic = loss(D_fake, torch.ones(D_fake.shape))
+            #
+            # # discriminator optmier will stop oprtimizing after the dacc is greater than 0.8
+            #
+            # # save check point
+            # dr_mean, dr_var = stat(D_stats_real)
+            # dl_mean, dl_var = stat(D_stats_fake)
+            # margin = 0.7
+            # train_discriminator = True
+            # dacc_real = torch.mean(D_real)
+            # dacc_fake = torch.mean(torch.ones(D_fake.shape) - D_fake)
+            # dacc = (dacc_real + dacc_fake) * 0.5
+            # G_loss = l2(dr_mean, dl_mean)
+            # G_loss += l2(dr_var, dl_var)
+            # D_loss = D_loss_real + D_loss_fake
+            # if dacc > margin:
+            #     train_discriminator = False
+            # if train_discriminator:
+            #     D_loss.backward(retain_graph=True)
+            # print(G_loss)
+            # print(D_loss)
+            # print(G_loss_classic)
+            # print(dacc)
+            # G_loss.backward(retain_graph=True)
+            # G_loss_classic.backward()
+            # if train_discriminator:
+            #     optimizer_Dloss.step()
+            # optimizer_Gloss.step()
+            # optimizer_Gloss_classic.step()
+            save_image(fake_image, "fake" + str(batch_i) + ".png")
+            save_image(tData, "real" + str(batch_i) + ".png")
 
-            # discriminator optmier will stop oprtimizing after the dacc is greater than 0.8
+        filled = generator.voxels[0]> 0.9
+        N = 64
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+        ax.voxels(filled, edgecolors='k')
+        fig.savefig("3d" +str(epoch)+ ".png")
 
-            # save check point
-            dr_mean, dr_var = discriminator.stat(D_stats_real)
-            dl_mean, dl_var = discriminator.stat(D_stats_fake)
-            margin = 0.8
-            train_discriminator = True
-            dacc_real = torch.mean(D_real)
-            dacc_fake = torch.mean(torch.ones(D_fake.shape) - D_fake)
-            dacc = (dacc_real + dacc_fake) * 0.5
-            G_loss = l2(dr_mean, dl_mean)
-            G_loss += l2(dr_var, dl_var)
-            D_loss = D_loss_real + D_loss_fake
-            if dacc > margin:
-                train_discriminator = False
-            if train_discriminator:
-                D_loss.backward(retain_graph=True)
-            print(G_loss)
-            print(D_loss)
-            print(G_loss_classic)
-            print(dacc)
-            G_loss.backward(retain_graph=True)
-            G_loss_classic.backward()
-            if train_discriminator:
-                optimizer_Dloss.step()
-            optimizer_Gloss.step()
-            optimizer_Gloss_classic.step()
-        save_image(tData, "real" + str(epoch) + ".png")
-        save_image(fake_image, "fake" + str(epoch) + ".png")
+def train_discriminator(optimizer, real_data, fake_data, discriminator):
+    # Reset gradients
+    optimizer.zero_grad()
+
+    # 1.1 Train on Real Data
+    prediction_real = discriminator(real_data)
+    # Calculate error and backpropagate
+    error_real = loss(prediction_real, torch.ones(prediction_real.shape))
+    error_real.backward()
+
+    # 1.2 Train on Fake Data
+    prediction_fake = discriminator(fake_data)
+    # Calculate error and backpropagate
+    error_fake = loss(prediction_fake, torch.zeros(prediction_fake.shape))
+    error_fake.backward()
+
+    # 1.3 Update weights with gradients
+    optimizer.step()
+
+    # Return error and predictions for real and fake inputs
+    return error_real + error_fake, prediction_real, prediction_fake
+
+def train_generator(optimizer, fake_data, discriminator):
+    # Reset gradients
+    optimizer.zero_grad()
+    # Sample noise and generate fake data
+    prediction = discriminator(fake_data)
+    # Calculate error and backpropagate
+    error = loss(prediction, torch.ones(prediction.shape))
+    error.backward()
+        # Update weights with gradients
+    optimizer.step()
+        # Return error
+    return error
+
+
+
+
+        #save_image(tData, "real" + str(epoch) + ".png")
+        #save_image(fake_image, "fake" + str(epoch) + ".png")
 
             # every 50Th save the image
             # after 50 batch, we render/ save real image, fake image , and voxels
@@ -205,14 +268,14 @@ def main():
     #     return
 
     optimizer_Dloss = torch.optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()), lr=1e-4, weight_decay=0.5)
-    optimizer_Gloss = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()), lr=0.0025, weight_decay=0.5)
-    optimizer_Gloss_classic = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()), lr=0.0025, weight_decay=0.5)
+    optimizer_Gloss = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()), lr=0.00025, weight_decay=0.5)
+    #optimizer_Gloss_classic = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()), lr=0.00025, weight_decay=0.5)
 
     # perform training!
     # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer_Dloss,optimizer_Gloss, optimizer_Gloss_classic, args.schedule, gamma=args.gamma)
 
     dataset_name = "airplane64"
-    train(dataset_name , discriminator, generator, optimizer_Dloss, optimizer_Gloss, optimizer_Gloss_classic)
+    train(dataset_name , discriminator, generator, optimizer_Dloss, optimizer_Gloss)
         # val_loss = val(val_dataset, model, optimizer, args)
         # scheduler.step()
         # is_best = val_loss < best_loss

@@ -48,19 +48,9 @@ class ShapeDiscriminator3D(torch.nn.Module):
 
         sigmoid = self.sigmoid(h4)
 
-        return sigmoid, h4, h0
+        return sigmoid
 
-    def loss(self, logits, p):
-        #https://stackoverflow.com/questions/65458736/pytorch-equivalent-to-tf-nn-softmax-cross-entropy-with-logits-and-tf-nn-sigmoid
 
-        # calculate sigmoid_cross_entropy_with_logits
-        # not sure if this is right
-        loss = p * -torch.log(torch.sigmoid(logits)) + (1 - p) * -torch.log(1 - torch.sigmoid(logits))
-
-        return loss.mean()
-
-    def stat(self, input):
-        return input.mean(dim=2) , input.std(dim=2)
 
 
 def l2(a, b):
@@ -68,7 +58,17 @@ def l2(a, b):
 
 
 
+def loss(logits, p):
+        #https://stackoverflow.com/questions/65458736/pytorch-equivalent-to-tf-nn-softmax-cross-entropy-with-logits-and-tf-nn-sigmoid
 
+        # calculate sigmoid_cross_entropy_with_logits
+        # not sure if this is right
+        loss = p * -torch.log(logits) + (1 - p) * -torch.log(1 - logits)
+
+        return loss.mean()
+
+def stat(input):
+        return input.mean(dim=2) , input.std(dim=2)
 ###############################  test script begin
 # model = ShapeDiscriminator3D()
 # input = torch.randn(64, 1, 32, 32)
