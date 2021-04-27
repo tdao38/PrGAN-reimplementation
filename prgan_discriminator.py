@@ -8,7 +8,7 @@ class ShapeDiscriminator3D(torch.nn.Module):
         super(ShapeDiscriminator3D, self).__init__()
         self.d_size = 128
         self.batch_size = 64
-        self.image_size = (32, 32)
+        self.image_size = (64, 64)
 
         # Architecture
         self.batch_norm_1 = torch.nn.BatchNorm2d(128)
@@ -21,7 +21,7 @@ class ShapeDiscriminator3D(torch.nn.Module):
         self.conv2d_2 = torch.nn.Conv2d(self.d_size, self.d_size*2, 5, 2, 2)
         self.conv2d_3 = torch.nn.Conv2d(self.d_size * 2, self.d_size * 4, 5, 2, 2)
         self.conv2d_4 = torch.nn.Conv2d(self.d_size * 4, self.d_size * 8, 5, 2, 2)
-        self.linear = torch.nn.Linear(4096, 1)
+        self.linear = torch.nn.Linear(16384, 1)
         self.leakyrelu = torch.nn.LeakyReLU(0.2)
         self.sigmoid = torch.nn.Sigmoid()
 
@@ -48,6 +48,7 @@ class ShapeDiscriminator3D(torch.nn.Module):
 
         sigmoid = self.sigmoid(h4)
 
+        # 64 x 1
         return sigmoid
 
 
@@ -58,21 +59,37 @@ def l2(a, b):
 
 
 
-def loss(logits, p):
+def loss_discriminator(real, fake):
         #https://stackoverflow.com/questions/65458736/pytorch-equivalent-to-tf-nn-softmax-cross-entropy-with-logits-and-tf-nn-sigmoid
 
         # calculate sigmoid_cross_entropy_with_logits
         # not sure if this is right
-        loss = p * -torch.log(logits) + (1 - p) * -torch.log(1 - logits)
+        #loss = p * -torch.log(logits) + (1 - p) * -torch.log(1 - logits)
+
+        loss = torch.square(real- torch.ones(real.shape))  + torch.square(fake)
+        # low gradient
 
         return loss.mean()
+
+
+def loss_generator(fake):
+    # https://stackoverflow.com/questions/65458736/pytorch-equivalent-to-tf-nn-softmax-cross-entropy-with-logits-and-tf-nn-sigmoid
+
+    # calculate sigmoid_cross_entropy_with_logits
+    # not sure if this is right
+    # loss = p * -torch.log(logits) + (1 - p) * -torch.log(1 - logits)
+
+    loss = torch.square(fake - torch.ones(fake.shape))
+    # low gradient
+
+    return loss.mean()
 
 def stat(input):
         return input.mean(dim=2) , input.std(dim=2)
 ###############################  test script begin
 # model = ShapeDiscriminator3D()
-# input = torch.randn(64, 1, 32, 32)
-# sigmoid, h4, h0 = model(input, False)
+# input = torch.randn(64, 1, 64, 64)
+# sigmoid = model(input, False)
 # p = torch.ones(sigmoid.shape)
 # loss = model.loss(h4, p)
 # mean, std = model.stat(h0)

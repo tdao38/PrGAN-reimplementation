@@ -1,9 +1,10 @@
-from  prgan_discriminator import ShapeDiscriminator3D, l2, loss, stat
+from  prgan_discriminator import ShapeDiscriminator3D, l2, loss_discriminator, stat, loss_generator
 from prgan_generator import ShapeGenerator3D
 import matplotlib.image as mpimg
 from torchvision import transforms
 import glob
 from torchvision.utils import save_image
+from PIL import Image
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -44,7 +45,7 @@ def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Glo
     training_step = 0
 
     n_iterations = 200
-    trans = transforms.Compose([transforms.Resize(32)])
+    #trans = transforms.Compose([transforms.Resize(32)])
     for epoch in range(n_iterations):
 
         # randomzied the file order
@@ -54,6 +55,7 @@ def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Glo
         n_batches = n_files // batch_size
         #n_batches = 128 // batch_size
         # batch size = 64
+        d_error = 9
         for batch_i in range(n_batches):
             print(batch_i)
             # iterate through the files
@@ -64,17 +66,18 @@ def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Glo
             imgs_batch = load_imgbatch(dataset_files[idxs_i], color=False)
             imgs_batch = torch.tensor(np.array(imgs_batch))
             # downsample the image to 32 x 32
-            tData = trans(imgs_batch)
+            tData = imgs_batch
 
             # fake data
             fake_image = generator.forward().detach()
-            fake_image = trans(fake_image)
-
-            d_error, d_pred_real, d_pred_fake = train_discriminator(optimizer_Dloss, tData, fake_image, discriminator)
+            fake_image = fake_image
+            if d_error > 0.8:
+                print("train")
+                d_error, d_pred_real, d_pred_fake = train_discriminator(optimizer_Dloss, tData, fake_image, discriminator)
             # 2. Train Generator
             # Generate fake data
             fake_data = generator.forward()
-            fake_image = trans(fake_data)
+            fake_image = fake_data
 
             # Train G
             g_error = train_generator(optimizer_Gloss, fake_image, discriminator)
@@ -120,15 +123,17 @@ def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Glo
             #     optimizer_Dloss.step()
             # optimizer_Gloss.step()
             # optimizer_Gloss_classic.step()
+            #img_plot = Image.fromarray(fake_image[0].detach().numpy(), 'L')
+            #img_plot.show()
             save_image(fake_image, "fake" + str(batch_i) + ".png")
             save_image(tData, "real" + str(batch_i) + ".png")
 
-        filled = generator.voxels[0]> 0.9
-        N = 64
-        fig = plt.figure()
-        ax = fig.gca(projection='3d')
-        ax.voxels(filled, edgecolors='k')
-        fig.savefig("3d" +str(epoch)+ ".png")
+        # filled = generator.voxels[0]> 0.9
+        # N = 64
+        # fig = plt.figure()
+        # ax = fig.gca(projection='3d')
+        # ax.voxels(filled, edgecolors='k')
+        # fig.savefig("3d" +str(epoch)+ ".png")
 
 def train_discriminator(optimizer, real_data, fake_data, discriminator):
     # Reset gradients
@@ -137,20 +142,22 @@ def train_discriminator(optimizer, real_data, fake_data, discriminator):
     # 1.1 Train on Real Data
     prediction_real = discriminator(real_data)
     # Calculate error and backpropagate
-    error_real = loss(prediction_real, torch.ones(prediction_real.shape))
-    error_real.backward()
+    #error_real = loss(prediction_real, torch.ones(prediction_real.shape))
+    #error_real.backward()
 
     # 1.2 Train on Fake Data
     prediction_fake = discriminator(fake_data)
+    error = loss_discriminator(prediction_real,prediction_fake)
     # Calculate error and backpropagate
-    error_fake = loss(prediction_fake, torch.zeros(prediction_fake.shape))
-    error_fake.backward()
+    #error_fake = loss(prediction_fake, torch.zeros(prediction_fake.shape))
+    #error_fake.backward()
+    error.backward()
 
     # 1.3 Update weights with gradients
     optimizer.step()
 
     # Return error and predictions for real and fake inputs
-    return error_real + error_fake, prediction_real, prediction_fake
+    return error, prediction_real, prediction_fake
 
 def train_generator(optimizer, fake_data, discriminator):
     # Reset gradients
@@ -158,7 +165,8 @@ def train_generator(optimizer, fake_data, discriminator):
     # Sample noise and generate fake data
     prediction = discriminator(fake_data)
     # Calculate error and backpropagate
-    error = loss(prediction, torch.ones(prediction.shape))
+    # log(1-p)
+    error = loss_generator(prediction)
     error.backward()
         # Update weights with gradients
     optimizer.step()
@@ -267,8 +275,8 @@ def main():
     #     test(test_dataset, model, args)
     #     return
 
-    optimizer_Dloss = torch.optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()), lr=1e-4, weight_decay=0.5)
-    optimizer_Gloss = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()), lr=0.00025, weight_decay=0.5)
+    optimizer_Dloss = torch.optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()), lr=0.000001, weight_decay=0.5)
+    optimizer_Gloss = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()), lr=0.0025, weight_decay=0.5)
     #optimizer_Gloss_classic = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()), lr=0.00025, weight_decay=0.5)
 
     # perform training!

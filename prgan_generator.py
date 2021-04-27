@@ -1,6 +1,8 @@
 import torch
 import numpy as np
 import math
+
+from torchvision.utils import save_image
 # import ops
 
 
@@ -206,6 +208,8 @@ class ShapeGenerator3D(torch.nn.Module):
         #z_final = model(z_fc_reshape) * (1.0 / 1)
         z_final_reshape = z_final.reshape(64, 64, 64, 64)
         self.voxels= z_final_reshape
+        # if the value negative (1 - blacked binvox package )
+        # visualize the grayscale of the voxels
 
 
 
@@ -240,6 +244,7 @@ class ShapeGenerator3D(torch.nn.Module):
             img = project(transform_volume(self.voxels[i], rot_matrix(v[i])), self.tau)
             rendered_imgs[i] = img
 
+    # x^2 + y^2 + z^2 - r^2 > positive or negative  sphere function
         rendered_imgs_final = rendered_imgs.unsqueeze(1)
         return rendered_imgs_final
 
