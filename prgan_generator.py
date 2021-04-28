@@ -99,7 +99,13 @@ def resample_voxels(v, xs, ys, zs, method="trilinear"):
                     torch.abs((xs - ceil_xs) * (ys - ceil_ys) * (zs - ceil_zs)) * get_voxel_values(v, floor_xs, floor_ys,
                                                                                                 floor_zs)
                     )
-        return final_value
+    else:
+        r_xs = torch.round(xs)
+        r_ys = torch.round(ys)
+        r_zs = torch.round(zs)
+        final_value = get_voxel_values(v, r_xs, r_ys, r_zs)
+
+    return final_value
 
     # elif method == "nearest":
     #     r_xs = tf.round(xs)
@@ -139,7 +145,7 @@ class ShapeGenerator3D(torch.nn.Module):
         self.z_dim = 201
         self.vox_dim = 32
         self.batch_size = 64
-        self.tau = 0.5
+        self.tau = 1
         #self.z = self.get_z()
         # Architecture
         self.fc = torch.nn.Linear(in_features=200,  # self.z_dim-1,
@@ -149,7 +155,10 @@ class ShapeGenerator3D(torch.nn.Module):
         self.batch_norm_3 = torch.nn.BatchNorm3d(32)
         self.batch_norm_4 = torch.nn.BatchNorm3d(1)
 
-        self.relu = torch.nn.ReLU()
+        self.relu_1 = torch.nn.ReLU()
+        self.relu_2 = torch.nn.ReLU()
+        self.relu_3 = torch.nn.ReLU()
+        self.relu_4 = torch.nn.ReLU()
 
         self.conv3d_1 = torch.nn.ConvTranspose3d(in_channels=128,
                                                 out_channels=64,
@@ -192,16 +201,16 @@ class ShapeGenerator3D(torch.nn.Module):
         z_fc = self.fc(z_enc)
         z_fc_reshape = z_fc.reshape(64, 128, 4, 4, 4)
         model = torch.nn.Sequential(self.batch_norm_1,
-                                    self.relu,
+                                    self.relu_1,
                                     self.conv3d_1,
                                     self.batch_norm_2,
-                                    self.relu,
+                                    self.relu_2,
                                     self.conv3d_2,
                                     self.batch_norm_3,
-                                    self.relu,
+                                    self.relu_3,
                                     self.conv3d_3,
                                     self.batch_norm_4,
-                                    self.relu,
+                                    self.relu_4,
                                     self.conv3d_4,
                                     self.sigmoid)
         z_final = model(z_fc_reshape) * (1.0 / self.tau)
@@ -237,12 +246,13 @@ class ShapeGenerator3D(torch.nn.Module):
         #     self.voxels[i] = z_final_reshape
         # View
         v = self.z[:, self.z_dim-1]
-
         rendered_imgs = torch.zeros(64, 64, 64)
         for i in range(self.batch_size):
             #print("batch ", i+1)
             img = project(transform_volume(self.voxels[i], rot_matrix(v[i])), self.tau)
             rendered_imgs[i] = img
+        #rendered_imgs = (rendered_imgs > 0.5).float()
+
 
     # x^2 + y^2 + z^2 - r^2 > positive or negative  sphere function
         rendered_imgs_final = rendered_imgs.unsqueeze(1)

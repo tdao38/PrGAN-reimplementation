@@ -82,7 +82,7 @@ def loss_generator(fake):
     loss = torch.square(fake - torch.ones(fake.shape))
     # low gradient
 
-    return loss.mean()
+    return loss.sum()
 
 def stat(input):
         return input.mean(dim=2) , input.std(dim=2)
