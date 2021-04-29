@@ -23,11 +23,14 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 # function to save a checkpoint during training, including the best model so far
-def save_checkpoint(state, is_best, checkpoint_folder='checkpoints/', filename='checkpoint.pth.tar'):
-    checkpoint_file = os.path.join(checkpoint_folder, 'checkpoint_{}.pth.tar'.format(state['epoch']))
+def save_checkpoint(state, model, checkpoint_folder='checkpoints/'):
+    if model == 'generator':
+        filename = 'generator_best.pth.tar'
+    else:
+        filename = 'discriminator_best.pth.tar'
+    checkpoint_file = os.path.join(checkpoint_folder, filename)
     torch.save(state, checkpoint_file)
-    if is_best:
-        shutil.copyfile(checkpoint_file, os.path.join(checkpoint_folder, 'model_best.pth.tar'))
+    # shutil.copyfile(checkpoint_file, os.path.join(checkpoint_folder, 'model_best.pth.tar'))
 
 
 def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Gloss):
@@ -45,6 +48,10 @@ def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Glo
     training_step = 0
 
     n_iterations = 200
+
+    best_d_error = None
+    best_g_error = None
+
     # d_error = 9
     #trans = transforms.Compose([transforms.Resize(32)])
     for epoch in range(n_iterations):
@@ -84,12 +91,31 @@ def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Glo
             print(g_error)
             print(d_error)
 
+            # Save best model
+            if epoch == 0 and batch_i == 0:
+                best_d_error = d_error
+                best_g_error = g_error
 
-            if batch_i ==n_batches-1:
+            is_best_d = d_error < best_d_error
+            is_best_g = g_error < best_g_error
+
+            if is_best_d:
+                best_d_error = d_error
+                save_checkpoint({"state_dict": discriminator.state_dict(), "optimizer": optimizer_Dloss.state_dict()}, model="discriminator")
+                print("Saved best discriminator for epoch", epoch, 'batch ', batch_i)
+            if is_best_g:
+                best_g_error = g_error
+                save_checkpoint({"state_dict": generator.state_dict(), "optimizer": optimizer_Gloss.state_dict()}, model="generator")
+                print("Saved best generator for epoch", epoch, 'batch ', batch_i)
+
+            # Render image
+            if batch_i == n_batches-1:
+                # Save 2D
                 save_image(fake_image, "fake" + str(epoch) + str(batch_i) + ".png")
                 save_image(tData, "real" +str(epoch)+ str(batch_i) + ".png")
 
-                filled = generator.voxels[0]<0.1
+                # Save 3D
+                filled = generator.voxels[0] < 0.2
                 colors = np.array([0.4, 0.6, 0.8, 0.1])
                 edgecolors = np.array([0.0, 1.0, 0.0, 0.0])
                 fig = plt.figure()
@@ -115,6 +141,7 @@ def train_discriminator(optimizer, real_data, fake_data, discriminator):
     #error_fake.backward()
 
     if error > 0.2:
+        print("Train discriminator")
         optimizer.zero_grad()
         error.backward(retain_graph=True)
 
@@ -137,17 +164,6 @@ def train_generator(optimizer, fake_image, discriminator):
     optimizer.step()
         # Return error
     return error
-
-
-
-
-        #save_image(tData, "real" + str(epoch) + ".png")
-        #save_image(fake_image, "fake" + str(epoch) + ".png")
-
-            # every 50Th save the image
-            # after 50 batch, we render/ save real image, fake image , and voxels
-            # ops.save_images
-            # ops.save_voxels
 
 
 
@@ -211,54 +227,50 @@ def train_generator(optimizer, fake_image, discriminator):
 #     return
 #
 
-def main():
+def main(args):
     best_loss = 2e10
     best_epoch = -1
 
-    # create checkpoint folder
-    # if not isdir(args.checkpoint_folder):
-    #     print("Creating new checkpoint folder " + args.checkpoint_folder)
-    #     mkdir_p(args.checkpoint_folder)
-
     discriminator = ShapeDiscriminator3D()
     generator = ShapeGenerator3D()
+
+    optimizer_Dloss = torch.optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()), lr=0.00001, weight_decay=0.5)
+    optimizer_Gloss = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()), lr=0.0025, weight_decay=0.05)
+
+    if args.evaluate:
+        print("\nEvaluation only")
+        path_to_resume_generator ='checkpoints/generator_best.pth.tar'
+        print("=> Loading best generator '{}'".format(path_to_resume_generator))
+        generator_checkpoint = torch.load(path_to_resume_generator)
+        generator.load_state_dict(generator_checkpoint['state_dict'])
+        print("evaluate generator")
+        # Generate 3d shape
+        # 3d
+        return
+
+    if args.retrain:
+        print("\nRetrain using best models")
+        path_to_resume_generator = 'checkpoints/generator_best.pth.tar'
+        path_to_resume_discriminator = 'checkpoints/discriminator_best.pth.tar'
+        print("=> Loading best generator '{}'".format(path_to_resume_generator))
+        print("=> Loading best discriminator '{}'".format(path_to_resume_discriminator))
+        generator_checkpoint = torch.load(path_to_resume_generator)
+        discriminator_checkpoint = torch.load(path_to_resume_discriminator)
+
+        generator.load_state_dict(generator_checkpoint['state_dict'])
+        discriminator.load_state_dict(discriminator_checkpoint['state_dict'])
+
+        optimizer_Gloss.load_state_dict(generator_checkpoint['optimizer'])
+        optimizer_Dloss.load_state_dict(discriminator_checkpoint['optimizer'])
 
     discriminator.to(device)
     generator.to(device)
     print("=> Will use the (" + device.type + ") device.")
 
-    # cudnn will optimize execution for our network
     cudnn.benchmark = True
-
-    # if args.evaluate:
-    #     print("\nEvaluation only")
-    #     path_to_resume_file = os.path.join(args.checkpoint_folder, args.resume_file)
-    #     print("=> Loading training checkpoint '{}'".format(path_to_resume_file))
-    #     checkpoint = torch.load(path_to_resume_file)
-    #     model.load_state_dict(checkpoint['state_dict'])
-    #     test_dataset = SdfDataset(phase='test', args=args)
-    #     test(test_dataset, model, args)
-    #     return
-
-    optimizer_Dloss = torch.optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()), lr=0.00001, weight_decay=0.5)
-    optimizer_Gloss = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()), lr=0.0025, weight_decay=0.05)
-    #optimizer_Gloss_classic = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()), lr=0.00025, weight_decay=0.5)
-
-    # perform training!
-    # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer_Dloss,optimizer_Gloss, optimizer_Gloss_classic, args.schedule, gamma=args.gamma)
 
     dataset_name = "airplane64"
     train(dataset_name , discriminator, generator, optimizer_Dloss, optimizer_Gloss)
-        # val_loss = val(val_dataset, model, optimizer, args)
-        # scheduler.step()
-        # is_best = val_loss < best_loss
-        # if is_best:
-        #     best_loss = val_loss
-        #     best_epoch = epoch
-        # save_checkpoint({"epoch": epoch + 1, "state_dict": model.state_dict(), "best_loss": best_loss, "optimizer": optimizer.state_dict()},
-        #                 is_best, checkpoint_folder=args.checkpoint_folder)
-        # print(f"Epoch{epoch+1:d}. train_loss: {train_loss:.8f}. val_loss: {val_loss:.8f}. Best Epoch: {best_epoch+1:d}. Best val loss: {best_loss:.8f}.")
-
 
 def load_imgbatch(img_paths, color=True):
     images = []
@@ -273,5 +285,8 @@ def load_imgbatch(img_paths, color=True):
     return images
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='PrGAN')
+    parser.add_argument("-e", "--evaluate", action="store_true", help="Activate test mode - Evaluate model on val/test set (no training)")
+    parser.add_argument("-r", "--retrain", action="store_true", help="Load best models and retrain")
 
-    main()
+    main(parser.parse_args())
