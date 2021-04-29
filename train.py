@@ -45,7 +45,7 @@ def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Glo
     training_step = 0
 
     n_iterations = 200
-    d_error = 9
+    # d_error = 9
     #trans = transforms.Compose([transforms.Resize(32)])
     for epoch in range(n_iterations):
 
@@ -71,9 +71,9 @@ def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Glo
             # fake data
             fake_image = generator.forward()
             fake_image = fake_image
-            if d_error > 0.2:
-                print("train")
-                d_error, d_pred_real, d_pred_fake = train_discriminator(optimizer_Dloss, tData, fake_image, discriminator)
+            # if d_error > 0.2:
+            #     print("train")
+            d_error, d_pred_real, d_pred_fake = train_discriminator(optimizer_Dloss, tData, fake_image, discriminator)
             # 2. Train Generator
             # Generate fake data
             fake_data = generator.forward()
@@ -84,61 +84,22 @@ def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Glo
             print(g_error)
             print(d_error)
 
-            #
-            # optimizer_Dloss.zero_grad()
-            # optimizer_Gloss.zero_grad()
-            # optimizer_Gloss_classic.zero_grad()
-            #
-            # D_real, D_real_logits, D_stats_real = discriminator(tData)
-            # D_fake, D_fake_logits, D_stats_fake = discriminator(fake_image)
-            #
-            # D_loss_real = loss(D_real, torch.ones(D_real.shape))
-            # D_loss_fake = loss(D_fake, torch.zeros(D_fake.shape))
-            # G_loss_classic = loss(D_fake, torch.ones(D_fake.shape))
-            #
-            # # discriminator optmier will stop oprtimizing after the dacc is greater than 0.8
-            #
-            # # save check point
-            # dr_mean, dr_var = stat(D_stats_real)
-            # dl_mean, dl_var = stat(D_stats_fake)
-            # margin = 0.7
-            # train_discriminator = True
-            # dacc_real = torch.mean(D_real)
-            # dacc_fake = torch.mean(torch.ones(D_fake.shape) - D_fake)
-            # dacc = (dacc_real + dacc_fake) * 0.5
-            # G_loss = l2(dr_mean, dl_mean)
-            # G_loss += l2(dr_var, dl_var)
-            # D_loss = D_loss_real + D_loss_fake
-            # if dacc > margin:
-            #     train_discriminator = False
-            # if train_discriminator:
-            #     D_loss.backward(retain_graph=True)
-            # print(G_loss)
-            # print(D_loss)
-            # print(G_loss_classic)
-            # print(dacc)
-            # G_loss.backward(retain_graph=True)
-            # G_loss_classic.backward()
-            # if train_discriminator:
-            #     optimizer_Dloss.step()
-            # optimizer_Gloss.step()
-            # optimizer_Gloss_classic.step()
-            #img_plot = Image.fromarray(fake_image[0].detach().numpy(), 'L')
-            #img_plot.show()
-            if batch_i ==50:
+
+            if batch_i ==n_batches-1:
                 save_image(fake_image, "fake" + str(epoch) + str(batch_i) + ".png")
                 save_image(tData, "real" +str(epoch)+ str(batch_i) + ".png")
 
-        # filled = generator.voxels[0]> 0.9
-        # N = 64
-        # fig = plt.figure()
-        # ax = fig.gca(projection='3d')
-        # ax.voxels(filled, edgecolors='k')
-        # fig.savefig("3d" +str(epoch)+ ".png")
+                filled = generator.voxels[0]<0.1
+                colors = np.array([0.4, 0.6, 0.8, 0.1])
+                edgecolors = np.array([0.0, 1.0, 0.0, 0.0])
+                fig = plt.figure()
+                ax = fig.gca(projection='3d')
+                ax.voxels(filled, facecolors=colors, edgecolors=edgecolors)
+                fig.savefig("3d" +str(epoch)+ ".png")
 
 def train_discriminator(optimizer, real_data, fake_data, discriminator):
     # Reset gradients
-    optimizer.zero_grad()
+    # optimizer.zero_grad()
 
     # 1.1 Train on Real Data
     prediction_real = discriminator(real_data)
@@ -152,10 +113,13 @@ def train_discriminator(optimizer, real_data, fake_data, discriminator):
     # Calculate error and backpropagate
     #error_fake = loss(prediction_fake, torch.zeros(prediction_fake.shape))
     #error_fake.backward()
-    error.backward(retain_graph=True)
 
-    # 1.3 Update weights with gradients
-    optimizer.step()
+    if error > 0.2:
+        optimizer.zero_grad()
+        error.backward(retain_graph=True)
+
+        # 1.3 Update weights with gradients
+        optimizer.step()
 
     # Return error and predictions for real and fake inputs
     return error, prediction_real, prediction_fake
