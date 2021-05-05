@@ -1,5 +1,6 @@
-from  prgan_discriminator import ShapeDiscriminator3D, loss_discriminator
+from prgan_discriminator import ShapeDiscriminator3D, loss_discriminator
 from prgan_generator import ShapeGenerator3D, loss_generator
+from utils import mkdir_p, isdir
 import matplotlib.image as mpimg
 import glob
 from torchvision.utils import save_image
@@ -25,7 +26,7 @@ def save_checkpoint(state, model, checkpoint_folder='checkpoints/'):
     checkpoint_file = os.path.join(checkpoint_folder, filename)
     torch.save(state, checkpoint_file)
 
-def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Gloss):
+def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Gloss, args):
     discriminator.train()  # switch to train mode
     generator.train()
     #importing files
@@ -37,7 +38,7 @@ def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Glo
     batch_size=64
     z_size = 201
 
-    n_iterations = 200
+    n_iterations = 50
 
     best_d_error = None
     best_g_error = None
@@ -90,8 +91,8 @@ def train(dataset_name, discriminator, generator, optimizer_Dloss, optimizer_Glo
             # Render image
             if batch_i == n_batches-1:
                 # Save 2D
-                save_image(fake_image, "fake" + str(epoch) + str(batch_i) + ".png")
-                save_image(tData, "real" +str(epoch)+ str(batch_i) + ".png")
+                save_image(fake_image, os.path.join(args.results , "fake" + str(epoch) + str(batch_i) + ".png"))
+                save_image(tData,  os.path.join(args.results , "real" +str(epoch)+ str(batch_i) + ".png"))
                 # Save 3D
                 # filled = generator.voxels[0] < 0.2
                 # colors = np.array([0.4, 0.6, 0.8, 0.1])
@@ -134,9 +135,9 @@ def train_generator(optimizer, fake_image, discriminator):
         # Return error
     return error
 
-def generate_3d(generator):
+def generate_3d(generator, args):
     fake_image = generator.forward()
-    save_image(fake_image, "fake.png")
+    save_image(fake_image, os.path.join(args.results ,"fake.png"))
     # Save 3D
     filled = generator.voxels[0] < 0.2
     colors = np.array([0.4, 0.6, 0.8, 0.1])
@@ -144,26 +145,35 @@ def generate_3d(generator):
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     ax.voxels(filled, facecolors=colors, edgecolors=edgecolors)
-    fig.savefig("3d_object.png")
+    fig.savefig(os.path.join(args.results ,"3d_object.png"))
 
 
 def main(args):
+    # create checkpoint folder
+    if not isdir(args.checkpoint_folder):
+        print("Creating new checkpoint folder " + args.checkpoint_folder)
+        mkdir_p(args.checkpoint_folder)
+
+    # create checkpoint folder
+    if not isdir(args.results):
+        print("Creating new checkpoint folder " + args.results)
+        mkdir_p(args.results)
 
     discriminator = ShapeDiscriminator3D()
     generator = ShapeGenerator3D()
 
     optimizer_Dloss = torch.optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()), lr=0.00001, weight_decay=0.5)
-    optimizer_Gloss = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()), lr=0.00025, weight_decay=0.5)
+    optimizer_Gloss = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()), lr=0.005, weight_decay=0.05)
 
     if args.evaluate:
         print("\nEvaluation only")
-        path_to_resume_generator ='checkpoints/generator_best.pth(1).tar'
+        path_to_resume_generator ='checkpoints/generator_47.pth.tar'
         print("=> Loading best generator '{}'".format(path_to_resume_generator))
         generator_checkpoint = torch.load(path_to_resume_generator)
         generator.load_state_dict(generator_checkpoint['state_dict'])
         print("evaluate generator")
         # Generate 3d shape
-        generate_3d(generator)
+        generate_3d(generator, args)
         return
 
     if args.retrain:
@@ -188,7 +198,7 @@ def main(args):
     cudnn.benchmark = True
 
     dataset_name = "airplane64"
-    train(dataset_name , discriminator, generator, optimizer_Dloss, optimizer_Gloss)
+    train(dataset_name , discriminator, generator, optimizer_Dloss, optimizer_Gloss, args)
 
 def load_imgbatch(img_paths, color=True):
     images = []
@@ -206,5 +216,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PrGAN')
     parser.add_argument("-e", "--evaluate", action="store_true", help="Activate test mode - Evaluate model on val/test set (no training)")
     parser.add_argument("-r", "--retrain", action="store_true", help="Load best models and retrain")
+    parser.add_argument("--checkpoint_folder", default="checkpoints/", type=str, help="Folder to save checkpoints")
+    parser.add_argument("--results", default="results/", type=str, help="Folder to save trained images")
+
 
     main(parser.parse_args())
