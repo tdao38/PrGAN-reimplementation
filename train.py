@@ -167,7 +167,7 @@ def main(args):
 
     if args.evaluate:
         print("\nEvaluation only")
-        path_to_resume_generator ='checkpoints/generator_47.pth.tar'
+        path_to_resume_generator ='checkpoints/generator_best.pth.tar'
         print("=> Loading best generator '{}'".format(path_to_resume_generator))
         generator_checkpoint = torch.load(path_to_resume_generator)
         generator.load_state_dict(generator_checkpoint['state_dict'])
