@@ -45,7 +45,7 @@ python3 train.py -e
 ```
 ## Contribution 
 The orginal code was based on TensorFlow https://github.com/matheusgadelha/PrGAN, but we reimplement it in PyTorch
-- Implement prgan_generator.py, prgan_discriminator.py and train.py based on the paper 
+- Implement `prgan_generator.py`, `prgan_discriminator.py` and `train.py` based on the paper 
     - Thu Dao implemented `prgan_generator.py`
     - Shiqi Gao implemented `prgan_discriminator.py`
     - Together implemented `train.py`
