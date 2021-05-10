@@ -44,11 +44,10 @@ python3 train.py -r
 python3 train.py -e
 ```
 ## Contribution 
+The orginal code was based on TensorFlow, but we reimplement it in PyTorch
 - Implement prgan_generator.py, prgan_discriminator.py and train.py based on the paper 
     - Thu Dao implemented prgan_generator.py
     - Shiqi Gao implemented prgan_discriminator.py
     - Together implemented train.py
-- Reimplement ops.py based on the original code https://github.com/matheusgadelha/PrGAN
-    - The orginal code was based on tensorflow, but we reimplement it in torch
+- Reuse ops.py from the original repo https://github.com/matheusgadelha/PrGAN, reimplement in PyTorch
 - We used  functions from preivous homework to create directories, these are saved in utils.py 
-
