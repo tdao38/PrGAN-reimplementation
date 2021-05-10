@@ -235,7 +235,7 @@ def main(args):
     generator = ShapeGenerator3D()
 
     optimizer_Dloss = torch.optim.Adam(filter(lambda p: p.requires_grad, discriminator.parameters()), lr=0.00001, weight_decay=0.5)
-    optimizer_Gloss = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()), lr=0.0025, weight_decay=0.05)
+    optimizer_Gloss = torch.optim.Adam(filter(lambda p: p.requires_grad, generator.parameters()), lr=0.005, weight_decay=0.05)
 
     if args.evaluate:
         print("\nEvaluation only")
