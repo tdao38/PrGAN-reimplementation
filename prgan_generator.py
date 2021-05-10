@@ -2,7 +2,6 @@ import torch
 import numpy as np
 import math
 
-from torchvision.utils import save_image
 # import ops
 
 
@@ -134,6 +133,18 @@ def project(v, tau=1):
     p = torch.ones(p.shape) - torch.exp(-p * tau)
     img = torch.flip(p.T, [0, 1])
     return img
+
+def loss_generator(fake):
+    # https://stackoverflow.com/questions/65458736/pytorch-equivalent-to-tf-nn-softmax-cross-entropy-with-logits-and-tf-nn-sigmoid
+
+    # calculate sigmoid_cross_entropy_with_logits
+    # not sure if this is right
+    # loss = p * -torch.log(logits) + (1 - p) * -torch.log(1 - logits)
+
+    loss = torch.square(fake - torch.ones(fake.shape))
+    # low gradient
+
+    return loss.sum()
 
 class ShapeGenerator3D(torch.nn.Module):
     """
