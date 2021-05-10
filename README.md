@@ -49,5 +49,5 @@ The orginal code was based on TensorFlow https://github.com/matheusgadelha/PrGAN
     - Thu Dao implemented `prgan_generator.py`
     - Shiqi Gao implemented `prgan_discriminator.py`
     - Together implemented `train.py`
-- Reuse several functions in `ops.py` from the original repe  https://github.com/matheusgadelha/PrGAN/blob/master/src/ops.py and reimplement them in PyTorch. These functions are reused and rewritten in PyTorch in line 8-147 in `prgan_generator.py`. 
+- Reuse several functions in `ops.py` from the original repo  https://github.com/matheusgadelha/PrGAN/blob/master/src/ops.py and reimplement them in PyTorch. These functions are reused and rewritten in PyTorch in line 8-147 in `prgan_generator.py`. 
 - We used  functions from provided homework templates in the course to create directories, these are saved in `utils.py` 
