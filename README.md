@@ -43,6 +43,10 @@ python3 train.py -r
 ```
 python3 train.py -e
 ```
+
+## Results
+The `results` folder stores some of our best results, and the `results_full` folder stores all results images at each iteration
+
 ## Contribution 
 The orginal code was based on TensorFlow https://github.com/matheusgadelha/PrGAN, but we reimplement it in PyTorch
 - Implement `prgan_generator.py`, `prgan_discriminator.py` and `train.py` based on the paper 
