@@ -1,4 +1,4 @@
-# PrGAN-scratch
+# PrGAN-reimplementation
 
 ## GET SETUP LOCALLY
 1. Clone this repo locally
